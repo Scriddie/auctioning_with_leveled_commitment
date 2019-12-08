@@ -30,13 +30,11 @@ class Auction():
     def get_starting_prices(self):
         return np.tile(np.random.randint(low=1, high=self.max_price, size=(self.n_sellers)), (self.n_buyers, 1))
 
-    def determine_winners(self, starting_prices, bids):
+    def get_pure_winners(self, starting_prices, bids):
         """
         @param bids: array of n_buyers x n_sellers
         @param market_prices: n_sellers array
         """
-        # TODO: in pure auctions, no buyer can win in multiple auctions.
-        # -> implement auctions as step-by-step process?
         winners = np.zeros(bids.shape)
         market_prices = np.zeros(bids.shape)
         for i in range(self.n_sellers):
@@ -47,17 +45,41 @@ class Auction():
             winner_price = max(np.nanmax(potential_winners), 0.5*(starting_prices[0, i] + winner_bid))
             winners[winner_index, i] = winner_price
             bids[winner_index, :] = np.NaN
-
-        # potential_winners = np.where(bids < market_prices, bids, 0)
-        # winner_prices = potential_winners.max(axis=0)
-        # winners = np.where(potential_winners==winner_prices, potential_winners, 0)
         return winners, market_prices
-    
+
+    def get_leveled_winners(self, starting_prices, bids):
+        winners = np.zeros(bids.shape)
+        market_prices = np.zeros(bids.shape)
+        for i in range(self.n_sellers):
+            market_prices[:, i] = np.nanmean(bids[:, i])
+            potential_winners = np.where(bids[:, i] < market_prices[0, i], bids[:, i], 0)
+            winner_bid, winner_index = np.nanmax(potential_winners), np.nanargmax(potential_winners)
+            potential_winners[winner_index] = np.NaN  # winner pays second best
+            winner_price = max(np.nanmax(potential_winners), 0.5*(starting_prices[0, i] + winner_bid))
+            
+            gain = market_prices[winner_index, i] - winner_price
+            opportunity_index = winners[winner_index, :].argmax()
+            if winners[winner_index, opportunity_index] > 0:
+                # TODO: something wrong about opportunity cost
+                opportunity_cost = market_prices[winner_index, opportunity_index] - winners[winner_index, opportunity_index]
+                # indicate withdrawal cost by negative sign
+                if opportunity_cost > gain:
+                    print(f"OPPORTUNITY COST TOO HIGH")
+                    winners[winner_index, i] = - (self.penalty * winner_price)
+                else:
+                    print(f"OPPORTUNITY COST TOO LOW")
+                    winners[winner_index, i] = winner_price
+                    winners[winner_index, opportunity_index] = - (self.penalty * winners[winner_index, opportunity_index])
+            else:
+                winners[winner_index, i] = winner_price
+        
+        return winners, market_prices
+
     def update_profits(self, starting_prices, bids, market_prices, winner_matrix):
         market_prices = np.where(winner_matrix>0, market_prices, 0)
         market_prices = np.where(market_prices==starting_prices, 0.5*(market_prices+starting_prices), market_prices)
         self.buyer_profits += (market_prices - winner_matrix).sum(axis=1)
-        self.seller_profits += winner_matrix.sum(axis=0)
+        self.seller_profits += np.abs(winner_matrix).sum(axis=0)
 
     def update_bidding_factors(self, bids, winner_matrix):
         # TODO: explore other bidding strategies!
@@ -68,13 +90,20 @@ class Auction():
     def run_auction(self):
         # TODO: keep the printed info around in dataframe for experiments
         for i in range(self.n_rounds):
+
             starting_prices = self.get_starting_prices()
             print(f"starting_prices:\n {starting_prices}")
+
             bids = self.get_bids(starting_prices)
             print(f"bids:\n {bids}")
-            winner_matrix, market_prices = auction.determine_winners(starting_prices, bids)
-            print(f"winner_matrix:\n {winner_matrix}")
+
+            if self.leveled:
+                winner_matrix, market_prices = self.get_leveled_winners(starting_prices, bids)
+            else:
+                winner_matrix, market_prices = self.get_pure_winners(starting_prices, bids)
             print(f"market_prices:\n {market_prices}")
+            print(f"winner_matrix:\n {winner_matrix}")
+
             self.update_profits(starting_prices, bids, market_prices, winner_matrix)
             buyer_profits, seller_profits = self.get_results()
             print(f"buyer_profits:\t {buyer_profits}")
@@ -85,7 +114,12 @@ class Auction():
         return self.buyer_profits, self.seller_profits
 
 
-def integration_test(self, auction):
+def integration_test(auction):
+    # TODO: compare to hand-calculated results
+    pass
+
+def unittest(self, auction):
+    # TODO: turn into proper testing
     """run all auction steps manually"""
     starting_prices = auction.get_starting_prices()
     print(f"starting_prices:\n {starting_prices}")
@@ -103,11 +137,12 @@ def integration_test(self, auction):
 
 if __name__ == "__main__":
     params = {
-        "n_buyers": 4,
+        "n_buyers": 2,
         "n_sellers": 2,
         "n_rounds": 3,
         "max_price": 10,
-        "penalty": 1
+        "penalty": 0.1,
+        "leveled": True
     }
     auction = Auction(**params)
     auction.run_auction()
