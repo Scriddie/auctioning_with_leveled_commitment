@@ -28,6 +28,7 @@ class Auction():
         return np.multiply(self.bidding_factors, starting_prices)
 
     def get_starting_prices(self):
+        # TODO: 1D array should be enough
         return np.tile(np.random.randint(low=1, high=self.max_price, size=(self.n_sellers)), (self.n_buyers, 1))
 
     def get_pure_winners(self, starting_prices, bids):
@@ -76,8 +77,8 @@ class Auction():
         return winners, market_prices
 
     def update_profits(self, starting_prices, bids, market_prices, winner_matrix):
+        # TODO: maybe keep starting prices and market prices as 1D array up until here?
         market_prices = np.where(winner_matrix>0, market_prices, 0)
-        market_prices = np.where(market_prices==starting_prices, 0.5*(market_prices+starting_prices), market_prices)
         self.buyer_profits += (market_prices - winner_matrix).sum(axis=1)
         self.seller_profits += np.abs(winner_matrix).sum(axis=0)
 
@@ -108,7 +109,7 @@ class Auction():
             buyer_profits, seller_profits = self.get_results()
             print(f"buyer_profits:\t {buyer_profits}")
             print(f"seller_profits:\t {seller_profits}")
-            # self.update_bidding_factors(bids, winner_matrix)
+            self.update_bidding_factors(bids, winner_matrix)
         
     def get_results(self):
         return self.buyer_profits, self.seller_profits
