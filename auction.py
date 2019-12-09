@@ -1,5 +1,5 @@
 import numpy as np
-
+from copy import deepcopy
 
 class Auction():
     """
@@ -41,47 +41,61 @@ class Auction():
         @param bids: array of n_buyers x n_sellers
         @param market_prices: n_sellers array
         """
+        starting_prices = deepcopy(starting_prices)
+        bids = deepcopy(bids)
         winners = np.zeros(bids.shape)
         market_prices = np.zeros(self.n_sellers)
         for i in range(self.n_sellers):
             market_prices[i] = np.nanmean(bids[:, i])
             potential_winners = np.where(bids[:, i] < market_prices[i], bids[:, i], 0)
-            winner_bid, winner_index = np.nanmax(potential_winners), np.nanargmax(potential_winners)
-            potential_winners[winner_index] = np.NaN # set winners price to zero, so you get second best price
-            if np.count_nonzero(potential_winners) <= 1:
-                winner_price = 0.5*(starting_prices[i] + winner_bid)
-            else:
+            winner_bid, winner_idx = np.nanmax(potential_winners), np.nanargmax(potential_winners)
+            potential_winners[winner_idx] = np.NaN  # set winners price to zero, so you get second best price
+            if np.count_nonzero(potential_winners) > 1:
                 winner_price = np.nanmax(potential_winners) 
+            else:
+                winner_price = 0.5*(starting_prices[i] + winner_bid)
             if self.leveled:
                 gain = market_prices[i] - winner_price
-                opportunity_index = winners[winner_index, :].argmax()
-                if winners[winner_index, opportunity_index] > 0:
-                    opportunity_cost = market_prices[opportunity_index] - winners[winner_index, opportunity_index]
+                opportunity_index = winners[winner_idx, :].argmax()
+                if winners[winner_idx, opportunity_index] > 0:
+                    opportunity_cost = market_prices[opportunity_index] - winners[winner_idx, opportunity_index]
                     # indicate withdrawal cost by negative sign
                     if opportunity_cost > gain:
-                        winners[winner_index, i] = - (self.penalty * winner_price)
+                        winners[winner_idx, i] = - (self.penalty * winner_price)
                     else:
-                        winners[winner_index, i] = winner_price
-                        winners[winner_index, opportunity_index] = - (self.penalty * winners[winner_index, opportunity_index])
+                        winners[winner_idx, i] = winner_price
+                        winners[winner_idx, opportunity_index] = - (self.penalty * winners[winner_idx, opportunity_index])
                 else:
-                    winners[winner_index, i] = winner_price
+                    winners[winner_idx, i] = winner_price
             else:
-                winners[winner_index, i] = winner_price
-                bids[winner_index, :] = np.NaN
-        return winners, market_prices
+                winners[winner_idx, i] = winner_price
+                try:
+                    bids[winner_idx, i+1:] = np.NaN
+                except:
+                    IndexError
+        return winners, market_prices, bids
 
-    def update_profits(self, bids, market_prices, pay_mat):
+    def update_profits(self, market_prices, pay_mat):
+        market_prices = deepcopy(market_prices)
+        pay_mat = deepcopy(pay_mat)
         # TODO: maybe keep starting prices and market prices as 1D array up until here?
         market_prices = np.tile(market_prices, (self.n_buyers, 1))
         market_prices = np.where(pay_mat > 0, market_prices, 0)
         self.buyer_profits += (market_prices - pay_mat).sum(axis=1)
         self.seller_profits += np.abs(pay_mat).sum(axis=0)
 
-    def update_bidding_factors(self, bids, pay_mat):
-        # TODO: explore other bidding strategies!
+    def update_bidding_factors(self, bids, market_prices, pay_mat):
         """update bidding factors for each buyer given bidding results"""
-        # TODO: fix
-        updates = np.where(bids>=pay_mat, self.decrease_factors, self.increase_factors)
+        # TODO: explore other bidding strategies!
+        bids = deepcopy(bids)
+        market_prices = deepcopy(market_prices)
+        market_prices = np.tile(market_prices, (self.n_buyers, 1))
+        print("__________")
+        print(np.nan_to_num(bids))
+        print("__________")
+        updates = np.where(bids >= market_prices, self.decrease_factors, self.increase_factors)
+        updates = np.where(np.isnan(bids), 1, updates)
+        updates = np.where(pay_mat > np.zeros(pay_mat.shape), self.decrease_factors, updates)
         self.bidding_factors *= updates
     
     def run_auction(self):
@@ -93,15 +107,19 @@ class Auction():
             bids = self.get_bids(starting_prices)
             print(f"original bids:\n {bids}")
 
-            pay_mat, market_prices = self.get_winners(starting_prices, bids)
+            pay_mat, market_prices, nan_bids = self.get_winners(starting_prices, bids)
+            print(f"sequential bids:\n {nan_bids}")
             print(f"market_prices between bidding buyers:\n {market_prices}")
             print(f"pay_mat:\n {pay_mat}")
 
-            self.update_profits(bids, market_prices, pay_mat)
+            self.update_profits(market_prices, pay_mat)
             buyer_profits, seller_profits = self.get_results()
             print(f"buyer_profits:\t {buyer_profits}")
             print(f"seller_profits:\t {seller_profits}")
-            self.update_bidding_factors(bids, pay_mat)
+
+            print(f"old bidding factors: \n {self.bidding_factors}")
+            self.update_bidding_factors(bids=nan_bids, market_prices=market_prices, pay_mat=pay_mat)
+            print(f"new bidding factors: \n {self.bidding_factors}")
         
     def get_results(self):
         return self.buyer_profits, self.seller_profits
