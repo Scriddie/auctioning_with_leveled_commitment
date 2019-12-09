@@ -81,8 +81,11 @@ class Auction():
         # TODO: maybe keep starting prices and market prices as 1D array up until here?
         market_prices = np.tile(market_prices, (self.n_buyers, 1))
         market_prices = np.where(pay_mat > 0, market_prices, 0)
-        self.buyer_profits += (market_prices - pay_mat).sum(axis=1)
-        self.seller_profits += np.abs(pay_mat).sum(axis=0)
+        buyer_increase = (market_prices - pay_mat).sum(axis=1)
+        seller_increase = np.abs(pay_mat).sum(axis=0)
+        self.buyer_profits += buyer_increase
+        self.seller_profits += seller_increase
+        return buyer_increase, seller_increase
 
     def update_bidding_factors(self, bids, market_prices, pay_mat):
         """update bidding factors for each buyer given bidding results"""
@@ -90,10 +93,7 @@ class Auction():
         bids = deepcopy(bids)
         market_prices = deepcopy(market_prices)
         market_prices = np.tile(market_prices, (self.n_buyers, 1))
-        print("__________")
-        print(np.nan_to_num(bids))
-        print("__________")
-        updates = np.where(bids >= market_prices, self.decrease_factors, self.increase_factors)
+        updates = np.where(np.nan_to_num(bids) >= market_prices, self.decrease_factors, self.increase_factors)
         updates = np.where(np.isnan(bids), 1, updates)
         updates = np.where(pay_mat > np.zeros(pay_mat.shape), self.decrease_factors, updates)
         self.bidding_factors *= updates
@@ -112,17 +112,13 @@ class Auction():
             print(f"market_prices between bidding buyers:\n {market_prices}")
             print(f"pay_mat:\n {pay_mat}")
 
-            self.update_profits(market_prices, pay_mat)
-            buyer_profits, seller_profits = self.get_results()
+            buyer_profits, seller_profits = self.update_profits(market_prices, pay_mat)
             print(f"buyer_profits:\t {buyer_profits}")
             print(f"seller_profits:\t {seller_profits}")
 
             print(f"old bidding factors: \n {self.bidding_factors}")
             self.update_bidding_factors(bids=nan_bids, market_prices=market_prices, pay_mat=pay_mat)
             print(f"new bidding factors: \n {self.bidding_factors}")
-        
-    def get_results(self):
-        return self.buyer_profits, self.seller_profits
 
 
 if __name__ == "__main__":
