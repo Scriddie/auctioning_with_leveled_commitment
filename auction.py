@@ -49,7 +49,7 @@ class Auction():
             winner_bid, winner_index = np.nanmax(potential_winners), np.nanargmax(potential_winners)
             potential_winners[winner_index] = np.NaN # set winners price to zero, so you get second best price
             if np.count_nonzero(potential_winners) <= 1:
-                winner_price = 0.5*(starting_prices[0, i] + winner_bid)
+                winner_price = 0.5*(starting_prices[i] + winner_bid)
             else:
                 winner_price = np.nanmax(potential_winners) 
             if self.leveled:
@@ -70,17 +70,18 @@ class Auction():
                 bids[winner_index, :] = np.NaN
         return winners, market_prices
 
-    def update_profits(self, bids, market_prices, winner_matrix):
+    def update_profits(self, bids, market_prices, pay_mat):
         # TODO: maybe keep starting prices and market prices as 1D array up until here?
         market_prices = np.tile(market_prices, (self.n_buyers, 1))
-        market_prices = np.where(winner_matrix>0, market_prices, 0)
-        self.buyer_profits += (market_prices - winner_matrix).sum(axis=1)
-        self.seller_profits += np.abs(winner_matrix).sum(axis=0)
+        market_prices = np.where(pay_mat > 0, market_prices, 0)
+        self.buyer_profits += (market_prices - pay_mat).sum(axis=1)
+        self.seller_profits += np.abs(pay_mat).sum(axis=0)
 
-    def update_bidding_factors(self, bids, winner_matrix):
+    def update_bidding_factors(self, bids, pay_mat):
         # TODO: explore other bidding strategies!
         """update bidding factors for each buyer given bidding results"""
-        updates = np.where(bids>=winner_matrix, self.decrease_factors, self.increase_factors)
+        # TODO: fix
+        updates = np.where(bids>=pay_mat, self.decrease_factors, self.increase_factors)
         self.bidding_factors *= updates
     
     def run_auction(self):
@@ -90,17 +91,17 @@ class Auction():
             print(f"starting_prices:\n {starting_prices}")
 
             bids = self.get_bids(starting_prices)
-            print(f"bids:\n {bids}")
+            print(f"original bids:\n {bids}")
 
-            winner_matrix, market_prices = self.get_winners(starting_prices, bids)
-            print(f"market_prices:\n {market_prices}")
-            print(f"winner_matrix:\n {winner_matrix}")
+            pay_mat, market_prices = self.get_winners(starting_prices, bids)
+            print(f"market_prices between bidding buyers:\n {market_prices}")
+            print(f"pay_mat:\n {pay_mat}")
 
-            self.update_profits(bids, market_prices, winner_matrix)
+            self.update_profits(bids, market_prices, pay_mat)
             buyer_profits, seller_profits = self.get_results()
             print(f"buyer_profits:\t {buyer_profits}")
             print(f"seller_profits:\t {seller_profits}")
-            self.update_bidding_factors(bids, winner_matrix)
+            self.update_bidding_factors(bids, pay_mat)
         
     def get_results(self):
         return self.buyer_profits, self.seller_profits

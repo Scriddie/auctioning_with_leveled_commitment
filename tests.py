@@ -5,7 +5,7 @@ reload(auction)
 import numpy as np
 
 
-def initialize_auc():
+def initialize_auction():
     params = {
         "n_buyers": 3,
         "n_sellers": 2,
@@ -35,28 +35,28 @@ def initialize_auc():
 ### run the auc
 
 if __name__ == "__main__":
-    auc = initialize_auc()
-    starting_prices = auc.get_starting_prices()
+    auction = initialize_auction()
+    starting_prices = auction.get_starting_prices()
     starting_prices = np.array([1, 1])
     print(f"starting_prices:\n {starting_prices}")
 
     # bidding factor multiplied by starting price
-    bids = auc.get_bids(starting_prices)
-    print(f"bids:\n {bids}")
+    bids = auction.get_bids(starting_prices)
+    print(f"original bids:\n {bids}")
 
-    winner_matrix, market_prices = auc.get_winners(starting_prices, bids)
-    print(f"market_prices:\n {market_prices}")
-    # print(f"winner_matrix:\n {winner_matrix}")
+    pay_mat, market_prices = auction.get_winners(starting_prices, bids)
+    print(f"market_prices between bidding buyers:\n {market_prices}")
+    print(f"payment_matrix:\n {pay_mat}")
 
-    # auc.update_profits(bids, market_prices, winner_matrix)
-    # buyer_profits, seller_profits = auc.get_results()
-    # print(f"buyer_profits:\t {buyer_profits}")
-    # print(f"seller_profits:\t {seller_profits}")
-    # auc.update_bidding_factors(bids, winner_matrix)
+    auction.update_profits(bids, market_prices, pay_mat)
+    buyer_profits, seller_profits = auction.get_results()
+    print(f"buyer_profits:\t {buyer_profits}")
+    print(f"seller_profits:\t {seller_profits}")
 
-
-
-
+    #bidding factors
+    print(f"old bidding factors: \n {auction.bidding_factors}")
+    auction.update_bidding_factors(bids, pay_mat)
+    print(f"new bidding factors: \n {auction.bidding_factors}")
 
 
 
@@ -89,9 +89,9 @@ if __name__ == "__main__":
 #     print(f"bids:\n {bids}")
 #     market_prices = auc.get_market_prices(bids)
 #     print(f"market_prices:\t {market_prices}")
-#     winner_matrix = auc.get_winner_matrix(bids, market_prices)
-#     print(f"winner_matrix:\n {winner_matrix}")
-#     auc.update_profits(bids, market_prices, winner_matrix)
+#     pay_mat = auc.get_pay_mat(bids, market_prices)
+#     print(f"pay_mat:\n {pay_mat}")
+#     auc.update_profits(bids, market_prices, pay_mat)
 #     buyer_profits, seller_profits = auc.get_results()
 #     print(f"buyer_profits:\t {buyer_profits}")
 #     print(f"seller_profits:\t {seller_profits}")
