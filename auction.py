@@ -47,8 +47,11 @@ class Auction():
             market_prices[i] = np.nanmean(bids[:, i])
             potential_winners = np.where(bids[:, i] < market_prices[i], bids[:, i], 0)
             winner_bid, winner_index = np.nanmax(potential_winners), np.nanargmax(potential_winners)
-            potential_winners[winner_index] = np.NaN
-            winner_price = max(np.nanmax(potential_winners), 0.5*(starting_prices[i] + winner_bid))
+            potential_winners[winner_index] = np.NaN # set winners price to zero, so you get second best price
+            if np.count_nonzero(potential_winners) <= 1:
+                winner_price = 0.5*(starting_prices[i] + winner_bid)
+            else:
+                winner_price = np.nanmax(potential_winners) 
             if self.leveled:
                 gain = market_prices[i] - winner_price
                 opportunity_index = winners[winner_index, :].argmax()
