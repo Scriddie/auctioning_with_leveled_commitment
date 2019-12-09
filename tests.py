@@ -18,16 +18,16 @@ def initialize_auction():
     auc = auction.Auction(**params)
 
     auc.bidding_factors = np.array([[2.0, 3.0],
-                                        [4.0, 5.0],
-                                        [6.0, 7.0]])
+                                    [4.0, 5.0],
+                                    [6.0, 7.0]])
 
     auc.decrease_factors = np.array([[0.1, 0.2],
-                                        [0.3, 0.4],
-                                        [0.5, 0.6]])
+                                     [0.3, 0.4],
+                                     [0.5, 0.6]])
 
     auc.increase_factors = np.array([[1.1, 1.2],
-                                        [1.2, 1.4],
-                                        [1.5, 1.6]])
+                                     [1.2, 1.4],
+                                     [1.5, 1.6]])
 
     return(auc)
 
@@ -58,6 +58,31 @@ if __name__ == "__main__":
     auction.update_bidding_factors(bids, pay_mat)
     print(f"new bidding factors: \n {auction.bidding_factors}")
 
+
+### start collecting desired outcomes.
+ 
+# starting_prices:
+#  [1 1]
+# original bids:
+#  [[2. 3.]
+#  [4. 5.]
+#  [6. 7.]]
+# market_prices between bidding buyers:
+#  [4. 6.]
+# payment_matrix:
+#  [[1.5 0. ]
+#  [0.  3. ]
+#  [0.  0. ]]
+# buyer_profits:   [2.5 3.  0. ]
+# seller_profits:  [1.5 3. ]
+# old bidding factors:
+#  [[2. 3.]
+#  [4. 5.]
+#  [6. 7.]]
+# new bidding factors:
+#  [[2.2 3.6]
+#  [4.8 7. ]
+#  [3.  4.2]]
 
 
 
