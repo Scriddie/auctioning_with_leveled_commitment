@@ -148,6 +148,3 @@ if __name__ == "__main__":
     auction = Auction(**params)
     auction.run_auction()
 
-
-
-    
