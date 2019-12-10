@@ -50,19 +50,16 @@ class Auction():
             bids_i = bids[:, i]
             
             if self.leveled and (i > 0):  # in case of leveled commitment, adjust bids by opportunity cost
-                # print("____________")
                 # get profits so far
                 buyer_profits, seller_profits = self.get_profits(market_prices[:i], pay_mat[:, :i])
                 potential_penalty = np.where(pay_mat > 0, self.penalty*pay_mat, 0).sum(axis=1)
-                # print(f"buyer_profits {buyer_profits}")
                 opp_cost = buyer_profits + potential_penalty  
-                # print(f"opp_cost: {opp_cost}")
                 bids_i -= opp_cost
-                # print(bids_i)
-                # print("____________")
-
+                bids_i = np.where(bids_i < starting_prices[i], np.NaN, bids_i)
+                bids[:, i] = bids_i  # update bids
+s
             market_prices[i] = np.nanmean(bids_i)
-            potential_winners = np.where(bids_i <= market_prices[i], bids_i, 0)
+            potential_winners = np.where(bids_i < market_prices[i], bids_i, 0)
             winner_bid, winner_idx = np.nanmax(potential_winners), np.nanargmax(potential_winners)
             potential_winners[winner_idx] = np.NaN  # set winners price to zero, so you get second best price
 
