@@ -47,24 +47,22 @@ class Auction():
         pay_mat = np.zeros(bids.shape)
         market_prices = np.zeros(self.n_sellers)
         for i in range(self.n_sellers):
-            # this is where we have to come up with new bids!
             bids_i = bids[:, i]
             
             if self.leveled and (i > 0):  # in case of leveled commitment, adjust bids by opportunity cost
-                # TODO: if it's below starting price, don't let the guy bid anymore
-                # TODO: if some guy doesnt bid in an auction, we still need to update their bidding factors
                 # print("____________")
                 # get profits so far
                 buyer_profits, seller_profits = self.get_profits(market_prices[:i], pay_mat[:, :i])
+                potential_penalty = np.where(pay_mat > 0, self.penalty*pay_mat, 0).sum(axis=1)
                 # print(f"buyer_profits {buyer_profits}")
-                opp_cost = buyer_profits + np.where(pay_mat > 0, self.penalty*pay_mat, 0).sum(axis=1)  
+                opp_cost = buyer_profits + potential_penalty  
                 # print(f"opp_cost: {opp_cost}")
                 bids_i -= opp_cost
                 # print(bids_i)
                 # print("____________")
 
             market_prices[i] = np.nanmean(bids_i)
-            potential_winners = np.where(bids_i < market_prices[i], bids_i, 0)
+            potential_winners = np.where(bids_i <= market_prices[i], bids_i, 0)
             winner_bid, winner_idx = np.nanmax(potential_winners), np.nanargmax(potential_winners)
             potential_winners[winner_idx] = np.NaN  # set winners price to zero, so you get second best price
 
@@ -119,6 +117,7 @@ class Auction():
         updates = np.where(np.isnan(bids), 1, updates)
         updates = np.where(pay_mat > np.zeros(pay_mat.shape), self.decrease_factors, updates)
         self.bidding_factors *= updates
+        self.bidding_factors = np.where(self.bidding_factors > 1, self.bidding_factors, 1)
     
     def run_auction(self):
         # TODO: keep the printed info around in dataframe for experiments
@@ -148,7 +147,7 @@ if __name__ == "__main__":
     params = {
         "n_buyers": 3,
         "n_sellers": 2,
-        "n_rounds": 3,
+        "n_rounds": 10,
         "max_price": 10,
         "penalty": 0.1,
         "leveled": True
