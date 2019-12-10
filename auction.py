@@ -1,5 +1,8 @@
 import numpy as np
 from copy import deepcopy
+import experiments
+from importlib import reload
+reload(experiments)
 
 class Auction():
     """
@@ -7,9 +10,9 @@ class Auction():
     """
     def __init__(self, n_buyers, n_sellers, n_rounds, max_price, penalty, leveled=False):
         # TODO: make random components parameters, if not supplied, only then random
+        assert(n_buyers > 1)
+        assert(n_sellers > 0)
         assert(n_buyers > n_sellers)
-        # assert(n_buyers >= 2)
-        # assert(n_sellers > 0)
         self.n_buyers = n_buyers
         self.n_sellers = n_sellers
         self.n_rounds = n_rounds
@@ -24,8 +27,11 @@ class Auction():
         self.bidding_factors = 1 + np.random.random(size=(n_buyers, n_sellers))
         self.decrease_factors = np.tile(np.random.random(size=(n_buyers)).reshape(-1, 1), (1, n_sellers))
         self.increase_factors = np.tile(1 + np.random.random(size=(n_buyers)).reshape(-1, 1), (1, n_sellers))
+        
+        # keep track of results
+        self.experiment_logger = experiments.ExperimentLogger()
 
-    # TODO: enable user to set starting values somehow?
+        # TODO: enable user to set starting values somehow?
 
     def get_bids(self, starting_prices):
         """
@@ -50,14 +56,13 @@ class Auction():
             bids_i = bids[:, i]
             
             if self.leveled and (i > 0):  # in case of leveled commitment, adjust bids by opportunity cost
-                # get profits so far
                 buyer_profits, seller_profits = self.get_profits(market_prices[:i], pay_mat[:, :i])
                 potential_penalty = np.where(pay_mat > 0, self.penalty*pay_mat, 0).sum(axis=1)
                 opp_cost = buyer_profits + potential_penalty  
                 bids_i -= opp_cost
                 bids_i = np.where(bids_i < starting_prices[i], np.NaN, bids_i)
                 bids[:, i] = bids_i  # update bids
-s
+
             market_prices[i] = np.nanmean(bids_i)
             potential_winners = np.where(bids_i < market_prices[i], bids_i, 0)
             winner_bid, winner_idx = np.nanmax(potential_winners), np.nanargmax(potential_winners)
@@ -115,7 +120,7 @@ s
         updates = np.where(pay_mat > np.zeros(pay_mat.shape), self.decrease_factors, updates)
         self.bidding_factors *= updates
         self.bidding_factors = np.where(self.bidding_factors > 1, self.bidding_factors, 1)
-    
+
     def run_auction(self):
         # TODO: keep the printed info around in dataframe for experiments
         for i in range(self.n_rounds):
@@ -139,6 +144,8 @@ s
             self.update_bidding_factors(bids=nan_bids, market_prices=market_prices, pay_mat=pay_mat)
             print(f"new bidding factors (buyers x sellers): \n {self.bidding_factors}\n\n")
 
+            self.experiment_logger.append_results(starting_prices, buyer_profits, seller_profits, self.bidding_factors)
+        self.experiment_logger.save_individual_results()
 
 if __name__ == "__main__":
     params = {
