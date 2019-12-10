@@ -42,9 +42,9 @@ class ExperimentLogger():
         pass
 
     def save_individual_results(self, dir="experiments", name="experiment.csv"):
+        """append all variables with suitable names"""
         df_dict = dict()
 
-        # append all variables with suitable names
         for i in range(self.all_market_prices.shape[1]):
             col_name = f"market_price_{i}"
             df_dict[col_name] = self.all_market_prices[:, i]
@@ -73,6 +73,7 @@ class ExperimentLogger():
             os.mkdir(dir)
 
         df = pd.DataFrame(df_dict)
+        df.index.name = "Round"
         df.to_csv(path_or_buf=os.path.join(dir, name), index=True)
 
 if __name__ == "__main__":

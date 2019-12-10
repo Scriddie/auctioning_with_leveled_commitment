@@ -1,14 +1,14 @@
 import numpy as np
 from copy import deepcopy
-import experiments
+import log_experiments
 from importlib import reload
-reload(experiments)
+reload(log_experiments)
 
 class Auction():
     """
     Modified second-price sealed-bid (Vickrey) auction
     """
-    def __init__(self, n_buyers, n_sellers, n_rounds, max_price, penalty, leveled=False):
+    def __init__(self, n_buyers, n_sellers, n_rounds, max_price, penalty, leveled=False, display=False):
         # TODO: make random components parameters, if not supplied, only then random
         assert(n_buyers > 1)
         assert(n_sellers > 0)
@@ -24,12 +24,14 @@ class Auction():
         self.buyer_profits = np.zeros(n_buyers)
 
         # parts with random initialization
+        # TODO: examine these initializations
         self.bidding_factors = 1 + np.random.random(size=(n_buyers, n_sellers))
-        self.decrease_factors = np.tile(np.random.random(size=(n_buyers)).reshape(-1, 1), (1, n_sellers))
+        self.decrease_factors = np.tile(np.random.uniform(low=0.9, high=1, size=(n_buyers)).reshape(-1, 1), (1, n_sellers))
         self.increase_factors = np.tile(1 + np.random.random(size=(n_buyers)).reshape(-1, 1), (1, n_sellers))
         
         # keep track of results
-        self.experiment_logger = experiments.ExperimentLogger()
+        self.display = display
+        self.experiment_logger = log_experiments.ExperimentLogger()
 
         # TODO: enable user to set starting values somehow?
 
@@ -121,30 +123,37 @@ class Auction():
         self.bidding_factors *= updates
         self.bidding_factors = np.where(self.bidding_factors > 1, self.bidding_factors, 1)
 
+    def display_output(self, auction_round, starting_prices, bids, nan_bids, market_prices, pay_mat, buyer_profits, seller_profits,
+     old_bidding_factors, new_bidding_factors):
+        # TODO: use all the pring stmts from auction
+        print(f"-----AUCTION ROUND {auction_round+1}------")
+        print(f"starting_prices:\n {starting_prices}\n")
+        print(f"original bids (buyers x sellers):\n {bids}\n")
+        print(f"adjusted bids (buyers x sellers):\n {nan_bids}")
+        print(f"market_prices between bidding buyers:\n {market_prices}")
+        print(f"payment matrix (buyers x sellers, negative values indicate penalty payments):\n {pay_mat}\n")
+        print(f"buyer_profits:\t {buyer_profits}")
+        print(f"seller_profits:\t {seller_profits}\n")
+        print(f"old bidding factors (buyers x sellers): \n {old_bidding_factors}")
+        print(f"new bidding factors (buyers x sellers): \n {new_bidding_factors}\n\n")
+        pass
+
     def run_auction(self):
         # TODO: keep the printed info around in dataframe for experiments
-        for i in range(self.n_rounds):
-            print(f"-----AUCTION ROUND {i+1}------")
+        for auction_round in range(self.n_rounds):
             starting_prices = self.get_starting_prices()
-            print(f"starting_prices:\n {starting_prices}\n")
-
             bids = self.get_bids(starting_prices)
-            print(f"original bids (buyers x sellers):\n {bids}\n")
-
             pay_mat, market_prices, nan_bids = self.get_auction_results(starting_prices, bids)
-            print(f"adjusted bids (buyers x sellers):\n {nan_bids}")
-            print(f"market_prices between bidding buyers:\n {market_prices}")
-            print(f"payment matrix (buyers x sellers, negative values indicate penalty payments):\n {pay_mat}\n")
-
             buyer_profits, seller_profits = self.update_profits(market_prices, pay_mat)
-            print(f"buyer_profits:\t {buyer_profits}")
-            print(f"seller_profits:\t {seller_profits}\n")
-
-            print(f"old bidding factors (buyers x sellers): \n {self.bidding_factors}")
+            old_bidding_factors = self.bidding_factors
             self.update_bidding_factors(bids=nan_bids, market_prices=market_prices, pay_mat=pay_mat)
-            print(f"new bidding factors (buyers x sellers): \n {self.bidding_factors}\n\n")
-
+            new_bidding_factors = self.bidding_factors
             self.experiment_logger.append_results(starting_prices, buyer_profits, seller_profits, self.bidding_factors)
+
+        if self.display:
+            self.display_output(auction_round, starting_prices, bids, nan_bids, market_prices, pay_mat, buyer_profits, seller_profits,
+                                old_bidding_factors, new_bidding_factors)
+
         self.experiment_logger.save_individual_results()
 
 if __name__ == "__main__":
@@ -154,7 +163,8 @@ if __name__ == "__main__":
         "n_rounds": 10,
         "max_price": 10,
         "penalty": 0.1,
-        "leveled": True
+        "leveled": True,
+        "display": True
     }
     auction = Auction(**params)
     auction.run_auction()

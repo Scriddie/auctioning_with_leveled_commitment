@@ -15,7 +15,8 @@ class TestAuction(unittest.TestCase):
                 "n_rounds": 1,
                 "max_price": 10,
                 "penalty": 0.1,
-                "leveled": leveled
+                "leveled": leveled,
+                "display": False
             }
             auc = auction.Auction(**params)
             auc.bidding_factors = np.array([[2.0, 3.0],
