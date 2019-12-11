@@ -2,14 +2,15 @@ import numpy as np
 import pandas as pd
 import os
 from copy import deepcopy
-import experiments
 
 class ExperimentLogger():
-    def __init__(self):
+    def __init__(self, n_buyers, n_sellers):
         self.all_market_prices = np.array([])
         self.all_buyer_profits = np.array([])
         self.all_seller_profits = np.array([])
         self.all_bidding_factors = np.array([])
+        self.n_buyers = n_buyers
+        self.n_sellers = n_sellers
 
     def append_results(self, market_prices, buyer_profits, seller_profits, bidding_factors):
         """unroll observations into 1D, append to individual arrays"""
@@ -31,7 +32,7 @@ class ExperimentLogger():
         else:
             self.all_seller_profits = np.concatenate((self.all_seller_profits, seller_profits), axis=0)
         
-        bidding_factors = bidding_factors.reshape(1, -1)
+        bidding_factors = bidding_factors.flatten().reshape(1, -1)
         if self.all_bidding_factors.size == 0:
             self.all_bidding_factors = bidding_factors
         else:
@@ -41,42 +42,38 @@ class ExperimentLogger():
         # TODO: maybe save some averages or something??
         pass
 
-    def save_individual_results(self, dir="experiments", name="experiment.csv"):
+    def save_individual_results(self, directory="experiments", name="experiment.csv"):
         """append all variables with suitable names"""
         df_dict = dict()
 
         for i in range(self.all_market_prices.shape[1]):
-            col_name = f"market_price_{i}"
+            col_name = f"market_price_item_{i}"
             df_dict[col_name] = self.all_market_prices[:, i]
 
         for i in range(self.all_buyer_profits.shape[1]):
-            col_name = f"buyer_{i}"
+            col_name = f"buyer_{i}_profit"
             df_dict[col_name] = self.all_buyer_profits[:, i]
 
-        for i in range(self.all_seller_profits.shape[1]):
-            col_name = f"seller_{i}"
-            df_dict[col_name] = self.all_seller_profits[:, i]
+        # for i in range(self.all_seller_profits.shape[1]):
+        #     col_name = f"seller_{i}_profit"
+        #     df_dict[col_name] = self.all_seller_profits[:, i]
         
-        seller_ind = 0
-        buyer_ind = 0
-        n_buyers = self.all_buyer_profits.shape[1]
-        for i in range(self.all_bidding_factors.shape[1]):
-            if i % n_buyers == 0:
-                seller_ind += 1
-                buyer_ind = 0
-            col_name = f"bidding_factor_buyer_{buyer_ind}_seller_{seller_ind}"
-            df_dict[col_name] = self.all_bidding_factors[:, i]
-            buyer_ind += 1
+        ind = 0
+        for buyer_ind in range(self.n_buyers):
+            for seller_ind in range(self.n_sellers):  # sellers
+                col_name = f"bidding_factor_buyer_{buyer_ind}_seller_{seller_ind}"
+                df_dict[col_name] = self.all_bidding_factors[:, ind]
+                ind +=1 
 
         # check path existance
-        if not os.path.isdir(dir):
-            os.mkdir(dir)
+        if not os.path.isdir(directory):
+            os.mkdir(directory)
 
         df = pd.DataFrame(df_dict)
         df.index.name = "Round"
-        df.to_csv(path_or_buf=os.path.join(dir, name), index=True)
+        df.to_csv(path_or_buf=os.path.join(directory, name), index=True)
 
 if __name__ == "__main__":
-    el = ExperimentLogger()
+    el = ExperimentLogger(2, 2)
     el.append_results(np.array([1]), np.array([1]), np.array([1]), np.array([1]))
     el.save_individual_results()
