@@ -162,7 +162,11 @@ class Auction():
             old_bidding_factors = self.bidding_factors
 
             # log
-            self.experiment_logger.append_results(starting_prices, buyer_profits, seller_profits, old_bidding_factors)
+            self.experiment_logger.append_results(starting_prices=starting_prices,
+                                                  market_prices=market_prices,
+                                                  buyer_profits=buyer_profits,
+                                                  seller_profits=seller_profits,
+                                                  bidding_factors=old_bidding_factors)
 
             self.update_bidding_factors(bids=nan_bids, market_prices=market_prices, pay_mat=pay_mat)
             new_bidding_factors = self.bidding_factors
